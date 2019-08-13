@@ -20,6 +20,7 @@ description: Kişisel Blog
 
 # List of links in the navigation bar
 navbar-links:
+  Tüm Paylaşımlar: "tags"
   Hakkımda: "aboutme"
   Github: "http://github.com/yunusemredilber"
 
