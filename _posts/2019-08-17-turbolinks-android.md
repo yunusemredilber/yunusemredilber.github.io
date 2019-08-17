@@ -8,7 +8,7 @@ tags: [ruby-on-rails, turbolinks, android]
 
 ### Şöyle Hızlıca Bir Başlangıç
 
-#### Turbolinks de ne ola ?
+#### Turbolinks ??
 
 Turbolinks, web'de gezinmeyi hızlandıran bir javascript kütüphanesidir.
 Bunu, yeni bir linke gidildiğinde sadece body ve title'ı güncelleyerek yapar.
@@ -16,39 +16,41 @@ Rails ekosistemi için çok önemli bir yere sahiptir.
 
 #### Tamam da android ne alaka ?
 
-Turbolinks'in bu davranışı sadece webde değil, mobil uygulamalarda da inanılmaz bir performans artışı sağlar.
-Rails geliştiricileri halihazırda geliştirmiş oldukları web sitelerini turbolinks adaptörleri sayesinde mobil cihazlara da uygulayabilirler.
+Turbolinks'in bu davranışı sadece webde değil, mobil uygulamalarda da performans artışı sağlar.
+Web uygulama geliştiricileri, halihazırda geliştirmiş oldukları web sitelerini turbolinks adaptörleri sayesinde mobil cihazlara da uygulayabilirler.
 
-Şimdilik sadece [turbolinks-ios](https://github.com/turbolinks/turbolinks-ios) ve [turbolinks-android](https://github.com/turbolinks/turbolinks-android) adaptörleri bulunmakta.
+Şimdilik sadece [turbolinks-ios](https://github.com/turbolinks/turbolinks-ios) :octocat: ve [turbolinks-android](https://github.com/turbolinks/turbolinks-android) :octocat: adaptörleri bulunmaktadır.
 
-**Turbolinks android adaptörü şu an geliştırilmemektedir. Geliştiricileri şu an 2.0 versiyonunu hazırlamakta. [bknz.](https://github.com/turbolinks/turbolinks-android/issues/110#issuecomment-508091299)**
+**Turbolinks android adaptörü şu an geliştırilmemektedir. Geliştiricileri ise 2.0 versiyonunu hazırlamakta. [bknz.](https://github.com/turbolinks/turbolinks-android/issues/110#issuecomment-508091299)**
 
-Şu an deprecate olması işlevsel olmadığı anlamına gelmemekte bilakis basecamp 3 uygulaması hala turbolinks-android ile harikalar yaratmakta.
+Şu an deprecate olması, işlevsel olmadığı anlamına gelmemekte bilakis basecamp 3 uygulaması hala turbolinks-android ile harikalar yaratmaktadır.
 
 ### Hazırlık
 
 #### Gereksinimler
 
-* Sağlıkı bir rails geliştirme ortamı (rbenv, ruby, bundler, rails ...)
+* Sağlıklı bir rails geliştirme ortamı (rbenv, ruby, bundler, rails ...)
 * Android Studio
 
 ### Uygulamaların İlklendirilmesi
 
 #### Rails Uygulaması
 
-Konumuz rails olmadığı için geçiyorum. Rails 5 veya 6 kullanıyorsanız zaten turbolnks kullanıyorsunuz demektir. Onun haricinde gerekli kurulum bilgilerini [turbolinks](https://github.com/turbolinks/turbolinks) reposundan alabilirsiniz.
+Konumuz rails olmadığı için geçiyorum.
+Rails 5 veya 6 kullanıyorsanız zaten turbolnks kullanıyorsunuz demektir.
+Onun haricinde gerekli kurulum bilgilerini [turbolinks](https://github.com/turbolinks/turbolinks) reposundan alabilirsiniz.
 Ben bu yazıda MIT lisansıyla geliştirmekte olduğum [groupath](https://github.com/yunusemredilber/groupath) projemi kullanacağım, çünkü işimiz sadece android tarafında olacak.
 
 #### Android Projesi
 
-İşe Empty Activity'i seçerek bir android projesi oluşturmakla başlayalım.
+İşe `Empty Activity`'i seçerek bir android projesi oluşturmakla başlayalım.
 
 <p align="center"> 
   <img src="/img/turbolinks-android/turbolinks-android-1.png" alt="Projeyi oluşturma">
 </p>
 
-Projeyi oluştururken isim vermeyi ve **Minimum API Levelini 19 yapmayı** unutmayalım.
-Turbolinks android adaptörü Android 4.4 öncesini desteklemiyor.
+Projeyi oluştururken isim vermeyi ve **Minimum API Levelini 19 yapmayı** :exclamation: unutmayalım.
+Turbolinks android adaptörü Android 4.4 öncesini desteklememektedir.
 
 <p align="center"> 
   <img src="/img/turbolinks-android/turbolinks-android-2.png" alt="Projeyi oluşturmayı tamamlama">
@@ -57,13 +59,13 @@ Turbolinks android adaptörü Android 4.4 öncesini desteklemiyor.
 ### Geliştirmeye başlama
 
 Aslında yapacağımız iş oldukca kolay.
-4-5 adımda bitecek bir iş. Şimdi adım adım yapalım.
+4-5 adımda bitecek bir iş. Şimdi adım adım uygulayalım:
 
 #### 1. Bağımlılıkları ayarlama
 
 En büyük sıkıntıyı çektiğimiz kısım burası.
 Çünkü zaman geçtikçe bağımlı uygulamalar değişiyor, farklı paketlere geçiyor veya komple siliniyor.
-Bu yüzden bu adımın güncel olması gerekiyor. Bu yazıyı yayımladığım 2019-08-14 tarihi ile tüm bağımlılıklar çalışır halde ve günceldir.
+Bu yüzden bu adımın güncel olması gerekiyor. Bu yazıyı yayımladığım *2019-08-17* tarihi ile tüm bağımlılıklar çalışır halde ve günceldir.
 Ayrıca güncel tutmaya çalışacağım.
 
 `build.gradle` dosyamızdaki ( uygulamanın, projenin değil! ) dependencieslere eklememiz gereken 3 _implementasyon_ var:
@@ -74,15 +76,15 @@ implementation 'com.google.code.gson:gson:2.8.2' // Important addition 1
 implementation 'org.apache.commons:commons-lang3:3.1' // Important addition 2
 ```
 
-Dosyanın tam haline [bu gist](https://gist.github.com/yunusemredilber/e55ce3e00a18cf29ddfa6da4b6723044) ten ulaşabilirsiniz.
+Dosyanın tam haline [bu gist](https://gist.github.com/yunusemredilber/e55ce3e00a18cf29ddfa6da4b6723044) :page_with_curl: üzerinden ulaşabilirsiniz.
 
-Bundan sonra `Build > Rebuild Project` diyip *Build completed successfully* şeklinde bir çıktı almanız gerekiyor.
+Bundan sonra `Build > Rebuild Project` diyip *Build completed successfully* şeklinde bir çıktı almamız gerekiyor.
 
 #### 2. activity_main.xml Ayarı
 
-Bu dosyayı direk orijinal turbolinks-android reposundaki örnek uygulamadan çekebiliriz.
+Bu dosyayı direkt orijinal turbolinks-android reposundaki örnek uygulamadan çekebiliriz.
 
-[activity_main.xml](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/res/layout/activity_main.xml)
+[activity_main.xml](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/res/layout/activity_main.xml) :page_with_curl:
 
 `app/res/layout/activity_main.xml`
 
@@ -114,13 +116,13 @@ Bunun için `app/manifests/AndroidManifest.xml` dosyasında, manifest tagının 
 
 Bunun için de turbolinks-android reposundaki örnek uygulamayı baz alabiliriz.
 
-[MainActivity.java](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/java/com/basecamp/turbolinks/demo/MainActivity.java)
+[MainActivity.java](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/java/com/basecamp/turbolinks/demo/MainActivity.java) :page_with_curl:
 
 `app/java/com.example.turbolinksapp/MainActivity.java` (com.example.turbolinksapp kısmı uygulamaya verdiğiniz isime göre değişebilir.)
 
 **En üstte bulunan `package com.example.turbolinksapp;` tarzı kodu lütfen değiştirmeyin.**
 
-**118 satırlık kodu buraya yazmak mantıksız olacağından, kodu sadece örnek oluşturması amacıyla KIRPARAK veriyorum. Lütfen [buradan](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/java/com/basecamp/turbolinks/demo/MainActivity.java) kopyalayarak kodunuzu düzenleyin.**
+**118 satırlık kodu buraya yazmak mantıksız olacağından, kodu sadece örnek oluşturması amacıyla KIRPARAK veriyorum. Lütfen [buradan](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/java/com/basecamp/turbolinks/demo/MainActivity.java) :link: kopyalayarak kodunuzu düzenleyin.**
 
 ```java
 package com.example.turbolinksapp;
@@ -131,7 +133,7 @@ import android.os.Bundle;
 
 public class MainActivity extends AppCompatActivity implements TurbolinksAdapter {
     
-    private static final String BASE_URL = "https://groupathx.herokuapp.com";
+    private static final String BASE_URL = "http://10.0.1.100:9292";
     private static final String INTENT_URL = "intentUrl";
 
     private String location;
@@ -163,18 +165,18 @@ public class MainActivity extends AppCompatActivity implements TurbolinksAdapter
 
 Başlangıçtada bahsettiğim gibi `groupath` uygulamamın adresini verdim.
 
-Ve Sonuç :)
+Ve Sonuç :sunglasses:
 
 <p align="center"> 
   <img src="/img/turbolinks-android/turbolinks-android-3.jpg" alt="Uygulamanın çalışır hali">
 </p>
 
-### Uygulamayı configüre etme
+### Uygulamayı konfigüre etme
 
 Turbolinks Android bize webviewin tam kontrolünü vermektedir. Bu webview'a `TurbolinksSession.getDefault(this).getWebView()` şeklinde ulaşabiliriz.
 
 
-#### UserAgent
+#### UserAgent 
 
 Uygulamamıza özel user-agent setleyerek daha farklı viewlar göstermek gibi uygulamaya özel işler yapabiliriz.
 Buna en yaygın örnek, websitesinin navbarını render etmeyip, uygulama içinde native bi navigasyon göstermek olabilir.
@@ -264,11 +266,18 @@ Biz de kullanıcıya "internet bağlı değil" gibi native bir çıktı sunabili
 Sayfada turbolinks'i aktif bir linke tıkladığımızda tetiklenen method `visitProposedToLocationWithAction` dır.
 Artık biz de burada yeni bir intent üretip, gidilecek konumu vererek intenti başlatırız.
 
-Ayrıca burada, gidilecek konumu kontrol etmek, ürettiğimiz daha farklı bir intentde sayfayı açmak gibi advanced şeyler yapabiliriz.
+Ayrıca burada, gidilecek konumu kontrol etmek, kendi yazdığımız daha farklı bir activityi açmak gibi advanced şeyler yapabiliriz.
 
 
+> Android 9'da ngrok gibi bir servisle lokalden geliştirme yapmak isterken `Cleartext HTTP traffic not permitted` gibi çirkin bi hata ile karşılaşabilirsiniz.
+> Bunu çözmek için **AndroidManifest.xml** dosyasındaki application tagına `android:usesCleartextTraffic="true"` attribute'ünü ekleyebilirsiniz.
+> Production'da kullanmak tehlikeli olabileceği için işiniz bittiğinde silmeyi unutmayın.
 
+### Daha komplike bir örnek
 
+Daha komplike bir örnek için kendi hazırladığım groupath-android projesine bakabilirsiniz.
+Yeni şeyler öğrendikce geliştiriyor olacağım.
 
+[groupath-android](https://github.com/yunusemredilber/groupath-android) :octocat:
 
 > Photo by Farzad Nazifi on Unsplash

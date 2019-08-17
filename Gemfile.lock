@@ -249,6 +249,7 @@ PLATFORMS
 DEPENDENCIES
   github-pages (= 197)
   jekyll-paginate
+  jemoji
 
 BUNDLED WITH
    1.17.2
