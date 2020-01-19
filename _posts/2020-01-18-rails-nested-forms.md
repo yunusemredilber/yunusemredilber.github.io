@@ -162,8 +162,250 @@ inverse_of hakkında güzel bir örneği [Bi-directional Associations](https://g
 Model kısmında işimiz bittiğine göre, controllerımızı oluşturarak işe başlayalım:
 
 ```ruby
+# app/controllers/courses_contoller.rb
+class CoursesController < ApplicationController
+  before_action :set_course, only: %i[show edit update destroy]
+
+  def index
+    @courses = Course.includes(:subjects).all
+  end
+
+  def show; end
+
+  def new
+    @course = Course.new
+    @course.subjects.build
+  end
+
+  def edit; end
+
+  def create
+    @course = Course.new(courses_params)
+    if @course.save
+      redirect_to courses_path(@course),
+                  notice: 'Course was successfully created.'
+    else
+      render :new
+    end
+  end
+
+  def update
+    if @course.update(courses_params)
+      redirect_to course_path(@course),
+                  notice: 'Course was successfully updated.'
+    else
+      render :edit
+    end
+  end
+
+  def destroy
+    @course.destroy
+    redirect_to courses_path,
+                notice: 'Course was successfully destroyed.'
+  end
+
+  private
+
+  def set_course
+    @course = Course.includes(:subjects).find(params[:id])
+  end
+
+  def courses_params
+    params.require(:course).permit(:title, :description, subjects_attributes: %i[id title description is_published])
+  end
+end
+```
+
+Görüldüğü gibi gayet standart bir controller.
+Dikkatimizi vermemiz gereken iki tane kısım var:
+
+* Parametrelerde subjects_attributes diye bir array alıyoruz (courses_params metodunda).
+Arrayin içindeyse, tahmin edebileceğiniz gibi subjectin parametreleri var.
+
+* New metodunun içinde `@course.subjects.build` satırı var.
+Bu satır bize, course ile ilişkili bir şekilde oluştuacağımız subject için boş bir alan oluşturacaktır.
+View'i oluştuturken bu alan üzerinden gideceğiz.
+
+Son olarak routelerimizi girelim:
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  root 'courses#index'
+  resources :courses
+end
+```
+
+### Görünümlerin oluştutulması
+
+Artık asıl sihirin oluştuğu kısımlara geçebiliriz.
+
+İndex sayfamızda klasik olarak kurslarımızı listeliyoruz:
+
+```erb
+<!-- app/views/courses/index.html.erb -->
+<h1>Courses</h1>
+<% @courses.each do |course| %>
+  <h2><%=course.title %></h2>
+  <p><%=course.description %></p>
+  <div>
+    <% course.subjects.each do |subject| %>
+      <h3><%= subject.title %></h3>
+      <p><%= subject.description %></p>
+      <p>published: <%= subject.is_published.to_s%></p>
+    <% end %>
+  </div>
+<% end %>
+<%= link_to 'new', new_course_path %>
 
 ```
+
+New sayfamızda formumuza renderliyoruz:
+
+```erb
+<!-- app/views/courses/new.html.erb -->
+<h1>New Course</h1>
+<%= render 'form', course: @course %>
+```
+
+Formumuzda, her zaman yaptıklarımızdan hariç olarak; `form.fields_for` denilen metodu kullanacağız.
+fields_for, parametre olarak verdiğimiz kaynak için, önceden aldığımız build kadar form üretmemizi sağlıyor.
+Daha önceden controllerda kullandığımız `@course.subjects.build` satırı sayesinde, bir adet subject formu üretebileceğiz:
+
+```erb
+<!-- app/views/courses/_form.html.erb -->
+<%= form_with(model: course, local: true) do |form| %>
+  <% if course.errors.any? %>
+    <% course.errors.full_messages.each do |message| %>
+      <li><%= message %></li>
+    <% end %>
+    <br/>
+  <% end %>
+  <div class="form-group">
+    <%= form.label :title %>
+    <%= form.text_field :title %>
+  </div><br/>
+  <div class="form-group">
+    <%= form.label :description %>
+    <%= form.text_field :description %>
+  </div>
+  <h3>Subjects:</h3>
+  <div class="field">
+    <%= form.fields_for :subjects do |subjects_form| %>
+      <%= render 'subjects_form', form: subjects_form %>
+    <% end %>
+  </div>
+    <%= form.submit %>
+<% end %>
+```
+
+Eğer `3.times { @course.subjects.build }` deseydik, üç adet subject formu oluşacağınada dikkat ediniz.
+
+Son olarak, ayrı bir partial olarak konu formumuzu yazıyoruz:
+
+```erb
+<!-- app/views/courses/_subjects_form.html.erb -->
+<div>
+  <div class="form-group">
+    <%= form.label :title %>
+    <%= form.text_field :title %>
+  </div><br/>
+  <div class="form-group">
+    <%= form.label :description %>
+    <%= form.text_field :description %>
+  </div><br/>
+  <div class="form-check">
+    <%= form.check_box :is_published %>
+    <%= form.label :is_published %>
+  </div><br/>
+</div>
+```
+
+Artık aşağıdaki gibi mütevazı bir form görebiliriz.
+
+<p align="center"> 
+  <img src="/img/rails-nested-forms/rails-nested-forms-new-content.png" alt="Projeyi oluşturma">
+</p>
+
+Son olarak eksik kalan show ve edit sayfalarını da hızlıca bitirelim:
+
+```erb
+<!-- app/views/courses/show.html.erb -->
+<h1><%=@course.title %></h1>
+<p><%=@course.description %></p>
+<div>
+  <% @course.subjects.each do |subject| %>
+    <h2><%= subject.title %></h2>
+    <p><%= subject.description %></p>
+    <p>published: <%= subject.is_published.to_s%></p>
+  <% end %>
+</div>
+<%= link_to 'back', courses_path %>
+<%= link_to 'edit', edit_course_path(@course) %>
+```
+
+```erb
+<!-- app/views/courses/edit.html.erb -->
+<h1>Edit Course</h1>
+<%= render 'form', course: @course %>
+<%= link_to 'back', courses_path %>
+```
+
+Evet artık nested formları tamamladık.
+Konular için herhangi bir ek route ve controller kullanmadan işimizi oldukça basit bir şekilde hallettik.
+Aynı zamanda kullanıcı, ek bir sayfaya gitmeden hızlıca işlemlerini tamamladı.
+Yani hem koddan, hem de kullanıcı deneyiminden kazandık.
+
+Şimdi işin biraz daha ayrıntılı kısımlarına girebiliriz:
+
+### Nested formlarda silme işlemi
+
+Silme işlemi de built-in olarak gelen çözümlerden bir tanesi.
+
+İlk olarak kurs modelimize `allow_destroy: true` parametresini ekleyelim:
+
+```ruby
+# app/models/course.rb
+class Course < ApplicationRecord
+  #...
+  accepts_nested_attributes_for :subjects, allow_destroy: true
+  #...
+end
+```
+
+Daha sonra kulanıcının, konuyu silebilmesi için _destroy adında bir check_box ekleyelim.
+Bu check_box işaretlenmiş olarak gelirse rails o kaydı bizim için silecektir.
+
+```erb
+<!-- app/views/courses/_subjects_form.html.erb -->
+<div>
+  <!-- ... -->
+  <div class="form-check">
+    <%= form.check_box :_destroy %>
+    <%= form.label :_destroy %>
+  </div><br/>
+</div>
+```
+
+Son olarak controllerımızda _destroy parametresine izin verelim:
+
+```ruby
+# app/controllers/courses_contoller.rb
+class CoursesController < ApplicationController
+  # ...
+  def courses_params
+    params.require(:course).permit(:title, :description, subjects_attributes: %i[id title description is_published _destroy])
+  end
+end
+```
+
+Artık konularımızı da silebiliyoruz.
+Konular derken şimdiye kadar hep bir adet konu üzerinden ilerledik.
+Artık bu soruna dinamik bir çözüm getirmenin zamanı geldi.
+
+### Dinamik Nested Forms
+
+
 
 **Yazım süreci hala devam etmekte...**
 
