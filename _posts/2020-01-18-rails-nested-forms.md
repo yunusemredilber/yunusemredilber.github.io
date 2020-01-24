@@ -1,10 +1,12 @@
 ---
 layout: post
 title: Rails Nested Forms
-subtitle: Rails'in güzellilerinden nested formları ve accepts_nested_attributes_for'u gerçekleştirip güçlendireceğiz.
-bigimg: /img/farzad-nazifi-p-xSl33Wxyc-unsplash.jpg
+subtitle: Rails'in güzellilerinden olan nested formları, hakkını vererek gerçekleştireceğiz.
+bigimg: /img/konstantin-planinski-Aw2FSwNsb4M-unsplash.jpg
 tags: [ruby-on-rails]
 ---
+
+### Giriş
 
 Nested formlar, önceden gördüğüm, ama pratikte hiç uygulamadığım bir konuydu.
 Yakın zamanda, bulunduğum bir projede kullanma şansım oldu.
@@ -488,3 +490,5 @@ Umarım keyifli bir yolculuk olmuştur. Eşlik ettiğiniz için teşekkür ederi
 **Düzenlenme süreci hala devam etmekte...**
 
 **Kaynaklar eklenmeli...**
+
+> Photo by Konstantin Planinski on Unsplash
