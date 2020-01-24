@@ -405,9 +405,86 @@ Artık bu soruna dinamik bir çözüm getirmenin zamanı geldi.
 
 ### Dinamik Nested Forms
 
+Rails, malesef bu kadar falza şeye destek verse de, `Adding Fields on the Fly` diye tabir ettiği şeye (yani dinamik olarak, client'da nested form oluşturmamıza) built-in bir çözüm sunmuyor.
+Bizim senaryomuz için bu, forma koyacağımız bir `Konu Ekle` butonu demek.
+Rails yinede bize bir çıkış noktasını [Rails Guides](https://guides.rubyonrails.org/form_helpers.html#adding-fields-on-the-fly "Rails Guides") 'da sunuyor.
 
+Şimdi biz stimulus kullanarak yeniden kullanılabilir bir client çözümünü implemente edelim.
 
-**Yazım süreci hala devam etmekte...**
+İlk olarak stimulusu kuralım:
 
+```bash
+bundle exec rails webpacker:install:stimulus
+```
 
+Konuların formunu gösterdiğimiz kısmı aşağıdaki gibi değiştirelim:
 
+```erb
+<!-- app/views/courses/_form.html.erb -->
+<!-- ... -->
+<div data-controller="nested-forms">
+  <h3>Subjects:</h3>
+  <div class="field">
+    <%= form.fields_for :subjects do |subjects_form| %>
+      <%= render 'subjects_form', form: subjects_form %>
+    <% end %>
+    <% subject_form = form.fields_for(:subjects,
+                        Subject.new,
+                        child_index: 'new_field') do |subject_form|
+                          render('subjects_form', form: subject_form)
+                        end %>
+    <%= button_tag('Add Subject',
+                    data: { action: 'nested-forms#add',
+                            nested_forms_form: subject_form }) %>
+  </div>
+</div>
+<!-- ... -->
+```
+
+Değiştirmek istediğimiz minimum alanı sarmalayan bir div oluşturduk ve `nested-forms` adını verdiğmiz bir stimulus controllerı verdik.
+
+Ek olarak konu eklemek için bir button oluşturduk.
+Şimdi stimulus controllerımızı yazalım:
+
+```javascript
+import { Controller } from 'stimulus'
+
+export default class extends Controller {
+
+    add(event) {
+        event.preventDefault();
+        let form = event.target.dataset.form;
+        form = form.replace(/new_field/g, new Date().getTime().toString());
+        event.target.insertAdjacentHTML('beforebegin', form);
+    }
+}
+```
+
+Burada da yaptığımız şey gayet kendini belli ediyor.
+Tek dikkat etmemiz gerekn şey, form elemanlarının keylerinin unique olması.
+Yeni render ettiğimizde `new_field` olarak gelen ksımları, o anki zamanla eşleştirerek unique olduklarından emin oluyoruz.
+Tabiki burdaki unique yapma metodu iyileştirilebilir.
+Ama bu haliyle oldukca iş göreceğini düşünüyorum.
+Zaten server tarafında, id uygun bir şekiilde oluşturulacaktır.
+
+Artık istediğimiz yapıya ulaştığımızı düşünüyorum.
+
+### Sonuç
+
+Nested formların muazzam şeyler olduklarına karar verdim.
+Ama, her durumda kullanmak için kesinlikle uygun değil.
+
+Mesela, konular kurslarda ortak kullanılan bir yapı olsaydı (arada join table ile), aşağıdaki gibi bir yapı daha mantıklı olurdu:
+
+1. Kullanıcı kursu oluşturur.
+2. Kursun edit sayfasında, (veya show) konuları insert eder (Ajax isteği atan `Ekle` butonları ile gerçekleştirilebilir.)
+
+Bunun nested formlar ile yapılabilen hali, yukarıda gösterdğim alternatifi varken pek de mantıklı olmuyor :/
+
+Ama yinede, kullanıcıdan kayıt sırasında adres almak, cevaplarıyla birlikte soru oluşturmak, varyasyonları ile birlikte ürün oluşturmak gibi akla gelebilecek bir çok alanda, hayatı kolaylaştıran bu özelliği aklımızın bir köşesinde tutmamızda fayda var.
+
+Umarım keyifli bir yolculuk olmuştur. Eşlik ettiğiniz için teşekkür ederim.
+
+**Düzenlenme süreci hala devam etmekte...**
+
+**Kaynaklar eklenmeli...**
