@@ -1,9 +1,7 @@
 /** @jsx jsx */
 import { jsx, Styled } from "theme-ui"
-// import useSiteMetadata from "../hooks/use-site-metadata"
 
 const Footer = () => {
-  // const { siteTitle } = useSiteMetadata()
 
   return (
     <footer
