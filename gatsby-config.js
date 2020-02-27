@@ -4,7 +4,8 @@ require(`dotenv`).config({
 
 module.exports = {
   siteMetadata: {
-    siteTitleAlt: `Minimal Blog - Gatsby Theme`,
+    siteTitle: 'Yunus Emre Dilber',
+    siteTitleAlt: `Yunus Emre Dilber - Personal Blog`,
   },
   plugins: [
     {
@@ -23,11 +24,11 @@ module.exports = {
         externalLinks: [
           {
             name: `Twitter`,
-            url: `https://twitter.com/lekoarts_de`,
+            url: `https://twitter.com/yunusemredilber`,
           },
           {
-            name: `Instagram`,
-            url: `https://www.instagram.com/lekoarts.de/`,
+            name: `Github`,
+            url: `https://github.com/yunusemredilber`,
           },
         ],
       },
@@ -42,9 +43,9 @@ module.exports = {
     {
       resolve: `gatsby-plugin-manifest`,
       options: {
-        name: `minimal-blog - @lekoarts/gatsby-theme-minimal-blog`,
-        short_name: `minimal-blog`,
-        description: `Typography driven, feature-rich blogging theme with minimal aesthetics. Includes tags/categories support and extensive features for code blocks such as live preview, line numbers, and code highlighting.`,
+        name: `Yunus Emre Dilber - Personal Blog`,
+        short_name: `Yunus Emre Dilber`,
+        description: `Developer. I love to make beautiful and well-coded applications. Also, interested in compiler and interpreters.`,
         start_url: `/`,
         background_color: `#fff`,
         theme_color: `#6B46C1`,
