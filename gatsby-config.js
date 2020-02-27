@@ -27,6 +27,10 @@ module.exports = {
             url: `https://twitter.com/yunusemredilber`,
           },
           {
+            name: `Dev`,
+            url: `https://dev.to/yunusemredilber`,
+          },
+          {
             name: `Github`,
             url: `https://github.com/yunusemredilber`,
           },
