@@ -1,9 +1,30 @@
-<div style={{  }}>
+import Typed from 'react-typed'
+import 'react-typed/dist/animatedCursor.css'
+
+<div>
     <h3>Hi! I'm Yunus!</h3>
     <p>
         I'm a developer.
         I love to make beautiful and well-coded applications.
         Also, I interested in compiler and interpreters.
-        I will be writing topics like React, JS, Rails, Stimulus, Ruby, Flutter, Go, Android...
+        I will be writing topics like
+        
+        {' '}
+        
+        <Typed
+            strings={[
+                'React.',
+                'JS.',
+                'Rails.',
+                'Stimulus.',
+                'Ruby.',
+                'Flutter.',
+                'Go.',
+                'Android.']}
+            typeSpeed={65}
+            backSpeed={55}
+            loop >
+            <p style={{ display: 'inline' }}></p>
+        </Typed>
     </p>
 </div>
