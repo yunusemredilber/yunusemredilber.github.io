@@ -9,28 +9,30 @@ tags:
 
 ### Şöyle Hızlıca Bir Başlangıç
 
-#### Turbolinks ??
+<br/>
+
+#### Turbolinks
 
 Turbolinks, web'de gezinmeyi hızlandıran bir javascript kütüphanesidir.
 Bunu, yeni bir linke gidildiğinde sadece body ve title'ı güncelleyerek yapar.
 Rails ekosistemi için çok önemli bir yere sahiptir.
 
-#### Tamam da android ne alaka ?
+#### Turbolinks Android
 
-Turbolinks'in bu davranışı sadece webde değil, mobil uygulamalarda da performans artışı sağlar.
+Turbolinks'in bu davranışı sadece web'de değil, mobil uygulamalarda da performans artışı sağlar.
 Web uygulama geliştiricileri, halihazırda geliştirmiş oldukları web sitelerini turbolinks adaptörleri sayesinde mobil cihazlara da uygulayabilirler.
 
-Şimdilik sadece [turbolinks-ios](https://github.com/turbolinks/turbolinks-ios) :octocat: ve [turbolinks-android](https://github.com/turbolinks/turbolinks-android) :octocat: adaptörleri bulunmaktadır.
+Şimdilik sadece [turbolinks-ios](https://github.com/turbolinks/turbolinks-ios) ve [turbolinks-android](https://github.com/turbolinks/turbolinks-android) adaptörleri bulunmaktadır.
 
 **Turbolinks android adaptörü şu an geliştırilmemektedir. Geliştiricileri ise 2.0 versiyonunu hazırlamakta. [bknz.](https://github.com/turbolinks/turbolinks-android/issues/110#issuecomment-508091299)**
 
-Şu an deprecate olması, işlevsel olmadığı anlamına gelmemekte bilakis basecamp 3 uygulaması hala turbolinks-android ile harikalar yaratmaktadır.
+Şu an deprecate olması, işlevsel olmadığı anlamına gelmemekte bilakis Basecamp 3 uygulaması hala turbolinks-android ile çalışmaktadır.
 
 ### Hazırlık
 
 #### Gereksinimler
 
-* Sağlıklı bir rails geliştirme ortamı (rbenv, ruby, bundler, rails ...)
+* Sağlıklı bir rails geliştirme ortamı (rbenv, ruby, bundler, rails...)
 * Android Studio
 
 ### Uygulamaların İlklendirilmesi
@@ -38,9 +40,9 @@ Web uygulama geliştiricileri, halihazırda geliştirmiş oldukları web siteler
 #### Rails Uygulaması
 
 Konumuz rails olmadığı için geçiyorum.
-Rails 5 veya 6 kullanıyorsanız zaten turbolnks kullanıyorsunuz demektir.
-Onun haricinde gerekli kurulum bilgilerini [turbolinks](https://github.com/turbolinks/turbolinks) reposundan alabilirsiniz.
-Ben bu yazıda MIT lisansıyla geliştirmekte olduğum [groupath](https://github.com/yunusemredilber/groupath) projemi kullanacağım, çünkü işimiz sadece android tarafında olacak.
+Rails 5 veya 6 kullanıyorsanız zaten turbolinks kullanıyorsunuz demektir (özellikle kaldırmadıysanız).
+Onun haricinde, gerekli kurulum bilgilerini [turbolinks](https://github.com/turbolinks/turbolinks) reposunda bulabilirsiniz.
+Ben bu yazıda MIT lisansıyla geliştirmekte olduğum basit [groupath](https://github.com/yunusemredilber/groupath) projemi kullanacağım, çünkü işimiz sadece android tarafında olacak.
 
 #### Android Projesi
 
@@ -48,7 +50,7 @@ Ben bu yazıda MIT lisansıyla geliştirmekte olduğum [groupath](https://github
 
 ![Projeyi oluşturma](./turbolinks-android-1.png)
 
-Projeyi oluştururken isim vermeyi ve **Minimum API Levelini 19 yapmayı** :exclamation: unutmayalım.
+Projeyi oluştururken isim vermeyi ve **Minimum API Levelini 19 yapmayı** unutmayalım.
 Turbolinks android adaptörü Android 4.4 öncesini desteklememektedir.
 
 ![Proje oluşturmayı tamamlama](./turbolinks-android-2.png)
@@ -65,7 +67,7 @@ En büyük sıkıntıyı çektiğimiz kısım burası.
 Bu yüzden bu adımın güncel olması gerekiyor. Bu yazıyı yayımladığım *2019-08-17* tarihi ile tüm bağımlılıklar çalışır halde ve günceldir.
 Ayrıca güncel tutmaya çalışacağım.
 
-`build.gradle` dosyamızdaki ( uygulamanın, projenin değil! ) dependencieslere eklememiz gereken 3 _implementasyon_ var:
+`build.gradle` dosyamızdaki (uygulamanın, projenin değil!) dependencylerine eklememiz gereken 3 _implementasyon_ var:
 
 ```gradle:title=build.gradle
 implementation 'com.basecamp:turbolinks:1.0.9' // Turbolinks
@@ -120,7 +122,7 @@ Bunun için de turbolinks-android reposundaki örnek uygulamayı baz alabiliriz.
 
 > **En üstte bulunan `package com.example.turbolinksapp;` tarzı kodu lütfen değiştirmeyin.**
 
-118 satırlık kodu buraya yazmak mantıksız olacağından, kodu sadece örnek oluşturması amacıyla KIRPARAK veriyorum. Lütfen [buradan](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/java/com/basecamp/turbolinks/demo/MainActivity.java) kopyalayarak kodunuzu düzenleyin.
+118 satırlık kodu buraya yazmak mantıksız olacağından, kodu sadece örnek oluşturması amacıyla **kırparak** veriyorum. Lütfen [buradan](https://github.com/turbolinks/turbolinks-android/blob/master/demoapp/src/main/java/com/basecamp/turbolinks/demo/MainActivity.java) kopyalayarak kodunuzu düzenleyin.
 
 ```java:title=MainActivity.java
 package com.example.turbolinksapp;
@@ -184,12 +186,15 @@ Buna en yaygın örnek, websitesinin navbarını render etmeyip, uygulama içind
 // Set UserAgent
 TurbolinksSession.getDefault(this).getWebView().getSettings().setUserAgentString("AndroidApp");
 ```
+<br/>
 
 #### ProgressView
 
 Sayfalar arası geçiş için gelen ProgressView ekranını özelleştirebiliyoruz. Bunun için aşağıdaki adımları takip edebilirz:
 
 ##### 1. ActivityMain.xml Güncelleme
+
+<br/>
 
 ```xml:title=app/res/layout/activity_main.xml
 <?xml version="1.0" encoding="utf-8"?>
