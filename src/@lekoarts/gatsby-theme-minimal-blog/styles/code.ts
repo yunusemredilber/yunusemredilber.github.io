@@ -150,6 +150,17 @@ export default {
       background: `white`,
       color: `black`,
     },
+    "pre[class~='language-ruby']:before": {
+      content: `'ruby'`,
+      background: `#9B111E`,
+      color: `white`,
+    },
+    "pre[class~='language-erb']:before": {
+      content: `'erb'`,
+      background: `white`,
+      color: `#9B111E`,
+      fontWeight: 'bold !important',
+    },
   },
   '.gatsby-highlight > code[class*="language-"], .gatsby-highlight > pre[class=*="language-"]': {
     wordSpacing: `normal`,

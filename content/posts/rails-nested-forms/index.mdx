@@ -36,8 +36,7 @@ rails g model Subject course:references title description is_published:boolean
 
 Modellerin aralarındaki işilkileri tanımlayıp, basit birkaç kontrol yazabiliriz:
 
-```ruby
-# app/models/course.rb
+```ruby:title=app/models/course.rb
 class Course < ApplicationRecord
   # Associations
   has_many :subjects, dependent: :destroy
@@ -46,9 +45,9 @@ class Course < ApplicationRecord
   validates_presence_of :title, :description
 end
 ```
+<br/>
 
-```ruby
-# app/models/subject.rb
+```ruby:title=app/models/subject.rb
 class Subject < ApplicationRecord
   # Associations
   belongs_to :course
@@ -71,8 +70,7 @@ Bu yazıyla pek alakası olmasa da, test yazmak yeterince önemsenmediği için 
 Bir iki tane de olsa, test yazmak bize bir şey kaybettirmez.
 Yinede, eğer isterseniz bu kısmı atlayabilirsiz.
 
-```ruby
-# test/models/course_test.rb
+```ruby:title=test/models/course_test.rb
 require 'test_helper'
 
 class CourseTest < ActiveSupport::TestCase
@@ -94,8 +92,9 @@ class CourseTest < ActiveSupport::TestCase
 end
 ```
 
-```ruby
-# test/models/subject_test.rb
+<br/>
+
+```ruby:title=test/models/subject_test.rb
 require 'test_helper'
 
 class SubjectTest < ActiveSupport::TestCase
@@ -144,8 +143,7 @@ Birbirleri arasında one-to-one veya one-to-many ilişki bulunduran modeller ara
 Şimdi biz de, burdaki işlemleri kendi senaryomuzda uygulayalım.
 Öncelikle course modelimize, artık subject modeli için değerler alabilceğini söyleyelim:
 
-```ruby
-# app/models/course.rb
+```ruby:title=app/models/course.rb
 class Course < ApplicationRecord
   # Associations
   has_many :subjects, dependent: :destroy, inverse_of: :course
@@ -162,8 +160,7 @@ inverse_of hakkında güzel bir örneği [Bi-directional Associations](https://g
 
 Model kısmında işimiz bittiğine göre, controllerımızı oluşturarak işe başlayalım:
 
-```ruby
-# app/controllers/courses_contoller.rb
+```ruby:title=app/controllers/courses_contoller.rb
 class CoursesController < ApplicationController
   before_action :set_course, only: %i[show edit update destroy]
 
@@ -229,8 +226,7 @@ View'i oluştuturken bu alan üzerinden gideceğiz.
 
 Son olarak routelerimizi girelim:
 
-```ruby
-# config/routes.rb
+```ruby:title=config/routes.rb
 Rails.application.routes.draw do
   root 'courses#index'
   resources :courses
@@ -243,8 +239,7 @@ Artık asıl sihirin oluştuğu kısımlara geçebiliriz.
 
 İndex sayfamızda klasik olarak kurslarımızı listeliyoruz:
 
-```erb
-<!-- app/views/courses/index.html.erb -->
+```erb:title=app/views/courses/index.html.erb
 <h1>Courses</h1>
 <% @courses.each do |course| %>
   <h2><%=course.title %></h2>
@@ -263,8 +258,7 @@ Artık asıl sihirin oluştuğu kısımlara geçebiliriz.
 
 New sayfamızda formumuza renderliyoruz:
 
-```erb
-<!-- app/views/courses/new.html.erb -->
+```erb:title=app/views/courses/new.html.erb
 <h1>New Course</h1>
 <%= render 'form', course: @course %>
 ```
@@ -273,8 +267,7 @@ Formumuzda, her zaman yaptıklarımızdan hariç olarak; `form.fields_for` denil
 fields_for, parametre olarak verdiğimiz kaynak için, önceden aldığımız build kadar form üretmemizi sağlıyor.
 Daha önceden controllerda kullandığımız `@course.subjects.build` satırı sayesinde, bir adet subject formu üretebileceğiz:
 
-```erb
-<!-- app/views/courses/_form.html.erb -->
+```erb:title=app/views/courses/_form.html.erb
 <%= form_with(model: course, local: true) do |form| %>
   <% if course.errors.any? %>
     <% course.errors.full_messages.each do |message| %>
@@ -304,8 +297,7 @@ Eğer `3.times { @course.subjects.build }` deseydik, üç adet subject formu olu
 
 Son olarak, ayrı bir partial olarak konu formumuzu yazıyoruz:
 
-```erb
-<!-- app/views/courses/_subjects_form.html.erb -->
+```erb:title=app/views/courses/_subjects_form.html.erb
 <div>
   <div class="form-group">
     <%= form.label :title %>
@@ -328,8 +320,7 @@ Artık aşağıdaki gibi mütevazı bir form görebiliriz.
 
 Son olarak eksik kalan show ve edit sayfalarını da hızlıca bitirelim:
 
-```erb
-<!-- app/views/courses/show.html.erb -->
+```erb:title=app/views/courses/show.html.erb
 <h1><%=@course.title %></h1>
 <p><%=@course.description %></p>
 <div>
@@ -342,9 +333,9 @@ Son olarak eksik kalan show ve edit sayfalarını da hızlıca bitirelim:
 <%= link_to 'back', courses_path %>
 <%= link_to 'edit', edit_course_path(@course) %>
 ```
+<br/>
 
-```erb
-<!-- app/views/courses/edit.html.erb -->
+```erb:title=app/views/courses/edit.html.erb
 <h1>Edit Course</h1>
 <%= render 'form', course: @course %>
 <%= link_to 'back', courses_path %>
@@ -362,8 +353,7 @@ Silme işlemi de built-in olarak gelen çözümlerden bir tanesi.
 
 İlk olarak kurs modelimize `allow_destroy: true` parametresini ekleyelim:
 
-```ruby
-# app/models/course.rb
+```ruby:title=app/models/course.rb
 class Course < ApplicationRecord
   # ...
   accepts_nested_attributes_for :subjects, allow_destroy: true
@@ -374,8 +364,7 @@ end
 Daha sonra kulanıcının, konuyu silebilmesi için _destroy adında bir check_box ekleyelim.
 Bu check_box işaretlenmiş olarak gelirse rails o kaydı bizim için silecektir.
 
-```erb
-<!-- app/views/courses/_subjects_form.html.erb -->
+```erb:title=app/views/courses/_subjects_form.html.erb
 <div>
   <!-- ... -->
   <div class="form-check">
@@ -387,8 +376,7 @@ Bu check_box işaretlenmiş olarak gelirse rails o kaydı bizim için silecektir
 
 Son olarak controllerımızda _destroy parametresine izin verelim:
 
-```ruby
-# app/controllers/courses_contoller.rb
+```ruby:title=app/controllers/courses_contoller.rb
 class CoursesController < ApplicationController
   # ...
   def courses_params
@@ -417,8 +405,7 @@ bundle exec rails webpacker:install:stimulus
 
 Konuların formunu gösterdiğimiz kısmı aşağıdaki gibi değiştirelim:
 
-```erb
-<!-- app/views/courses/_form.html.erb -->
+```erb:title=app/views/courses/_form.html.erb
 <!-- ... -->
 <div data-controller="nested-forms">
   <h3>Subjects:</h3>
@@ -444,7 +431,7 @@ Değiştirmek istediğimiz minimum alanı sarmalayan bir div oluşturduk ve `nes
 Ek olarak konu eklemek için bir button oluşturduk.
 Şimdi stimulus controllerımızı yazalım:
 
-```javascript
+```javascript:title=app/javascript/controllers/nested-forms_controller.js
 import { Controller } from 'stimulus'
 
 export default class extends Controller {
