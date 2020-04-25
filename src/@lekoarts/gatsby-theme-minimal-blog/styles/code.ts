@@ -186,6 +186,9 @@ export default {
     py: 2,
     fontFamily: `monospace`,
     mx: [0, 0, 0, -3],
+    wordSpacing: `normal`,
+    wordBreak: `break-word`,
+    overflowWrap: `normal`,
   },
   "[data-name='live-preview'], [data-name='live-editor']": {
     mx: [0, 0, 0, -3],
