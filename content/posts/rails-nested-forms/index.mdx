@@ -7,12 +7,12 @@ tags:
 
 ### Giriş
 
-Nested formlar, önceden gördüğüm, ama pratikte hiç uygulamadığım bir konuydu.
+Nested (iç içe geçmiş) formlar, önceden gördüğüm ama pratikte hiç uygulamadığım bir konuydu.
 Yakın zamanda, bulunduğum bir projede kullanma şansım oldu.
-Uyguladıktan sonra gördüm ki, hem ortaya çıkan kod çok temiz oldu, hem de karşıma çıkmasından endişe ettiğim bir çok problem, kullandığım metodolojiden dolayı hiç var olamadı.
-Sonuç olarak, hem kendim, hem de kafasını bir nebze de olsa açabileceğim insanlar için, bu yazıyı yazmaya karar verdim. Umarım keyifli bir yolculuk olur.
+Uyguladıktan sonra gördüm ki, hem ortaya çıkan kod çok temiz oldu; hem de beni, farklı bir yöntem kullandığımda karşıma çıkacak bir çok problemden kurtardı.
+Sonuç olarak hem kendim, hem de bir şeyler katabileceğim sizler için bu yazıyı yazmaya karar verdim. Umarım keyifli bir yolculuk olur.
 
-Hepimiz hazırsak, 'Course Management' isimli kurs yönetimi projemizi oluşturarak başlayalım:
+Eğer hazırsak, 'Course Management' isimli kurs yönetimi projemizi oluşturarak başlayalım:
 
 ```bash
 rails new course_management
@@ -21,9 +21,8 @@ cd course_management
 
 ### Modellerin oluşturulması
 
-İşimizi olabildiğince basit tutarak, iki adet model oluşturalım.
-Bunlar Course ve Subject.
-Kullanıcı kursu oluştuturken, kursun konularını da hızlıca eklemek isteyebilir.
+Örnek projemizi olabildiğince basit tutarak, iki tane model oluşturalım: Course ve Subject.
+Kullanıcı, kursu oluştuturken kursun konularını da hızlıca eklemek isteyebilir.
 Bu da bizi tam istedğimiz çıkmaza getiriyor.
 `Daha oluşmamış Course modelimimz varken ona nasıl Subject ekleyebiliriz?`
 Bu sorunun cevabını birazdan birlikte göreceğiz.
@@ -66,7 +65,7 @@ rails db:migrate
 
 ### Modellerin test edilmesi
 
-Bu yazıyla pek alakası olmasa da, test yazmak yeterince önemsenmediği için bu başlığı buraya koymayı uygun gördüm.
+Yazımızla birinci dereceden alakalı olmasa da, test yazmak yeterince önemsenmediği için bu başlığı eklemeyi uygun gördüm.
 Bir iki tane de olsa, test yazmak bize bir şey kaybettirmez.
 Yinede, eğer isterseniz bu kısmı atlayabilirsiz.
 
@@ -138,12 +137,12 @@ rails test
 
 Artık asıl sorumuza geçebiliriz.
 `Daha oluşmamış Course modelimimz varken ona nasıl Subject ekleyebiliriz?`
-Bu sorunn cevabını rails bize [Building Complex Forms](https://guides.rubyonrails.org/form_helpers.html#building-complex-forms "Rails Guides") kısmında veriyor.
+Bu sorunn cevabını Rails bize [Building Complex Forms](https://guides.rubyonrails.org/form_helpers.html#building-complex-forms "Rails Guides") kısmında veriyor.
 Birbirleri arasında one-to-one veya one-to-many ilişki bulunduran modeller arasında, iç içe geçmiş formlar kullanarak, aynı anda birden fazla işikili modeli oluşturabilir ve güncelleyebilir, hatta silebiliriz.
-Şimdi biz de, burdaki işlemleri kendi senaryomuzda uygulayalım.
+Şimdi biz de, buradaki işlemleri kendi senaryomuzda uygulayalım.
 Öncelikle course modelimize, artık subject modeli için değerler alabilceğini söyleyelim:
 
-```ruby:title=app/models/course.rb
+```ruby:title=app/models/course.rb {3-4}
 class Course < ApplicationRecord
   # Associations
   has_many :subjects, dependent: :destroy, inverse_of: :course
@@ -156,11 +155,11 @@ end
 
 Burada eklediğimiz `accepts_nested_attributes_for :subjects` satırı bize, subject modeli için nested parametreler alabileceğimizi gösteriyor.
 `inverse_of: :course` kısmı içinse basitçe, yaşayabilceğimiz karışıklıkları önlemek için bir önlem diyebiliriz.
-inverse_of hakkında güzel bir örneği [Bi-directional Associations](https://guides.rubyonrails.org/association_basics.html#bi-directional-associations "Rails Guides") kısmında bulabilirsiniz.
+inverse_of kullanımının gerekliliği hakkında güzel bir örneği [Bi-directional Associations](https://guides.rubyonrails.org/association_basics.html#bi-directional-associations "Rails Guides") kısmında bulabilirsiniz.
 
 Model kısmında işimiz bittiğine göre, controllerımızı oluşturarak işe başlayalım:
 
-```ruby:title=app/controllers/courses_contoller.rb
+```ruby:title=app/controllers/courses_contoller.rb {12,49}
 class CoursesController < ApplicationController
   before_action :set_course, only: %i[show edit update destroy]
 
@@ -237,7 +236,7 @@ end
 
 Artık asıl sihirin oluştuğu kısımlara geçebiliriz.
 
-İndex sayfamızda klasik olarak kurslarımızı listeliyoruz:
+Index sayfasında, standart bir şekilde kurslarımızı listeliyoruz:
 
 ```erb:title=app/views/courses/index.html.erb
 <h1>Courses</h1>
@@ -256,7 +255,7 @@ Artık asıl sihirin oluştuğu kısımlara geçebiliriz.
 
 ```
 
-New sayfamızda formumuza renderliyoruz:
+New sayfasında, edit sayfasıyla ortak olarak kullanacağımız form partial'ını render ediyoruz:
 
 ```erb:title=app/views/courses/new.html.erb
 <h1>New Course</h1>
@@ -267,7 +266,7 @@ Formumuzda, her zaman yaptıklarımızdan hariç olarak; `form.fields_for` denil
 fields_for, parametre olarak verdiğimiz kaynak için, önceden aldığımız build kadar form üretmemizi sağlıyor.
 Daha önceden controllerda kullandığımız `@course.subjects.build` satırı sayesinde, bir adet subject formu üretebileceğiz:
 
-```erb:title=app/views/courses/_form.html.erb
+```erb:title=app/views/courses/_form.html.erb {18-20}
 <%= form_with(model: course, local: true) do |form| %>
   <% if course.errors.any? %>
     <% course.errors.full_messages.each do |message| %>
@@ -293,9 +292,9 @@ Daha önceden controllerda kullandığımız `@course.subjects.build` satırı s
 <% end %>
 ```
 
-Eğer `3.times { @course.subjects.build }` deseydik, üç adet subject formu oluşacağınada dikkat ediniz.
+Eğer `3.times { @course.subjects.build }` deseydik, üç adet subject formu oluşacağına dikkat ediniz.
 
-Son olarak, ayrı bir partial olarak konu formumuzu yazıyoruz:
+Son olarak, kurs formumuzda kullandığımız partial olan konu formumuzun patial'ını yazıyoruz:
 
 ```erb:title=app/views/courses/_subjects_form.html.erb
 <div>
@@ -346,14 +345,16 @@ Konular için herhangi bir ek route ve controller kullanmadan işimizi oldukça 
 Aynı zamanda kullanıcı, ek bir sayfaya gitmeden hızlıca işlemlerini tamamladı.
 Yani hem koddan, hem de kullanıcı deneyiminden kazandık.
 
-Şimdi işin biraz daha ayrıntılı kısımlarına girebiliriz:
+Şimdi işin daha ayrıntılı kısımlarına geçebiliriz:
 
 ### Nested formlarda silme işlemi
+
 Silme işlemi de built-in olarak gelen çözümlerden bir tanesi.
+`accepts_nested_attributes_for` metoduna allow_destroy parametresi *true* olarak geçildiğinde, güncellenen kayıtların `_destroy` alanı kontrol edilecek, seçili gelmesi durumunda ilgili kayıt silinecektir.
 
 İlk olarak kurs modelimize `allow_destroy: true` parametresini ekleyelim:
 
-```ruby:title=app/models/course.rb
+```ruby:title=app/models/course.rb {3}
 class Course < ApplicationRecord
   # ...
   accepts_nested_attributes_for :subjects, allow_destroy: true
@@ -361,8 +362,7 @@ class Course < ApplicationRecord
 end
 ```
 
-Daha sonra kulanıcının, konuyu silebilmesi için _destroy adında bir check_box ekleyelim.
-Bu check_box işaretlenmiş olarak gelirse rails o kaydı bizim için silecektir.
+Daha sonra kulanıcının, konuyu silebilmesi için `_destroy` adında bir check_box ekleyelim:
 
 ```erb:title=app/views/courses/_subjects_form.html.erb
 <div>
@@ -374,9 +374,9 @@ Bu check_box işaretlenmiş olarak gelirse rails o kaydı bizim için silecektir
 </div>
 ```
 
-Son olarak controllerımızda _destroy parametresine izin verelim:
+Son olarak controllerımızda `_destroy` alanına izin verelim:
 
-```ruby:title=app/controllers/courses_contoller.rb
+```ruby:title=app/controllers/courses_contoller.rb {4}
 class CoursesController < ApplicationController
   # ...
   def courses_params
@@ -389,23 +389,23 @@ Artık konularımızı da silebiliyoruz.
 Konular derken şimdiye kadar hep bir adet konu üzerinden ilerledik.
 Artık bu soruna dinamik bir çözüm getirmenin zamanı geldi.
 
-### Dinamik Nested Forms
+### Dinamik nested forms
 
 Rails, malesef bu kadar falza şeye destek verse de, `Adding Fields on the Fly` diye tabir ettiği şeye (yani dinamik olarak, client'da nested form oluşturmamıza) built-in bir çözüm sunmuyor.
 Bizim senaryomuz için bu, forma koyacağımız bir `Konu Ekle` butonu demek.
-Rails yinede bize bir çıkış noktasını [Rails Guides](https://guides.rubyonrails.org/form_helpers.html#adding-fields-on-the-fly "Rails Guides") 'da sunuyor.
+Rails, yinede bize bir çıkış noktasını [Rails Guides](https://guides.rubyonrails.org/form_helpers.html#adding-fields-on-the-fly "Rails Guides") 'da sunuyor.
 
-Şimdi biz stimulus kullanarak yeniden kullanılabilir bir client çözümünü implemente edelim.
+Bu çıkış noktasına göre biz de, Stimulus kullanarak bir client çözümü uygulayalım.
 
-İlk olarak stimulusu kuralım:
+İlk olarak Stimulusu kuralım:
 
 ```bash
 bundle exec rails webpacker:install:stimulus
 ```
 
-Konuların formunu gösterdiğimiz kısmı aşağıdaki gibi değiştirelim:
+Kurs formunu aşağıdaki gibi değiştirelim:
 
-```erb:title=app/views/courses/_form.html.erb
+```erb:title=app/views/courses/_form.html.erb {2,8-16}
 <!-- ... -->
 <div data-controller="nested-forms">
   <h3>Subjects:</h3>
@@ -426,10 +426,10 @@ Konuların formunu gösterdiğimiz kısmı aşağıdaki gibi değiştirelim:
 <!-- ... -->
 ```
 
-Değiştirmek istediğimiz minimum alanı sarmalayan bir div oluşturduk ve `nested-forms` adını verdiğmiz bir stimulus controllerı verdik.
+Değiştirmek istediğimiz minimum alanı sarmalayan bir div oluşturduk ve `nested-forms` adını verdiğmiz bir Stimulus controllerına işaret ettik.
 
-Ek olarak konu eklemek için bir button oluşturduk.
-Şimdi stimulus controllerımızı yazalım:
+Ek olarak, konu eklemek için bir buton oluşturduk.
+Şimdi Stimulus controllerımızı yazalım:
 
 ```javascript:title=app/javascript/controllers/nested-forms_controller.js
 import { Controller } from 'stimulus'
@@ -445,31 +445,29 @@ export default class extends Controller {
 }
 ```
 
-Burada da yaptığımız şey gayet kendini belli ediyor.
-Tek dikkat etmemiz gerekn şey, form elemanlarının keylerinin unique olması.
+Burada da yaptığımız şey kendini belli ediyor.
+Tek dikkat etmemiz gerekn şey, form elemanlarının keylerinin **unique** olması.
 Yeni render ettiğimizde `new_field` olarak gelen ksımları, o anki zamanla eşleştirerek unique olduklarından emin oluyoruz.
-Tabiki burdaki unique yapma metodu iyileştirilebilir.
+Burdaki unique yapma metodu tabiki iyileştirilebilir.
 Ama bu haliyle oldukca iş göreceğini düşünüyorum.
 Zaten server tarafında, id uygun bir şekiilde oluşturulacaktır.
 
-Artık istediğimiz yapıya ulaştığımızı düşünüyorum.
-
 ### Sonuç
 
-Nested formların muazzam şeyler olduklarına karar verdim.
-Ama, her durumda kullanmak için kesinlikle uygun değil.
+Nested form yapısının, hayatı kolaylaştıran şeylerden biri olduğunu düşünüyorum.
+Ama, her durumda kullanmak için uygun değil.
 
-Mesela, konular kurslarda ortak kullanılan bir yapı olsaydı (arada join table ile), aşağıdaki gibi bir yapı daha mantıklı olurdu:
+Mesela konular, kurslarda ortak olarak kullanılsaydı (arada join table ile), aşağıdaki gibi bir yapı daha mantıklı olurdu:
 
 1. Kullanıcı kursu oluşturur.
 2. Kursun edit sayfasında, (veya show) konuları insert eder (Ajax isteği atan `Ekle` butonları ile gerçekleştirilebilir.)
 
-Bunun nested formlar ile yapılabilen hali, yukarıda gösterdğim alternatifi varken pek de mantıklı olmuyor :/
+Bu senaryonun nested formlar ile yapılmış hali, yukarıda anlattığım alternatifi varken pek de mantıklı olmuyor :/
 
 Ama yinede, kullanıcıdan kayıt sırasında adres almak, cevaplarıyla birlikte soru oluşturmak, varyasyonları ile birlikte ürün oluşturmak gibi akla gelebilecek bir çok alanda, hayatı kolaylaştıran bu özelliği aklımızın bir köşesinde tutmamızda fayda var.
 
 Umarım keyifli bir yolculuk olmuştur. Eşlik ettiğiniz için teşekkür ederim.
 
-**Düzenlenme süreci hala devam etmekte...**
-
-**Kaynaklar eklenmeli...**
+### Kaynaklar
+* [Stackoverflow](https://stackoverflow.com/questions/58205387/rails-nesteds-forms-with-dynamic-fields/58206985#58206985)
+* [Rails Guides - Form Helpers](https://guides.rubyonrails.org/form_helpers.html)
