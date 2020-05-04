@@ -1,0 +1,17 @@
+svg {
+  margin: auto;
+  width: 100% !important;
+  height: unset;
+  max-height: 450px;
+}
+
+video {
+  width: 100% !important;
+  max-width: 450px;
+  outline: none;
+}
+
+div.center-content {
+  display: flex;
+  justify-content: center;
+}
