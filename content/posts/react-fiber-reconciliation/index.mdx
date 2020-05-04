@@ -1,0 +1,611 @@
+---
+title: React Fiber Reconciliation
+date: 2020-05-07
+tags:
+  - React
+---
+
+import ExampleFiberTree from "./example-fiber-tree.svg";
+import ExampleFiberTree2 from "./example-fiber-tree-2.svg";
+import FiberDebugExampleVideo from "./fiber_debbug_example.mp4"
+
+### Giriş
+
+React, kullanıcı arayüzleri geliştirebileceğiniz bir JavaScript kütüphanesidir.
+İçinde, bileşenlerin state değişikliklerini takip eden ve değişen kısımları güncelleyen bir mekanizma vardır.
+React'ta bu işlem **reconciliation** (uyumlaştırma) olarak adlandırılır.
+`setState` metodunu çağırdığımızda React, state veya prop'ların değişip değişmediğini kontrol edip, değişen kısımlar varsa bu kısımları yeniden render eder.
+
+> Reconcilation hakkında yüksek seviyede genel bir bilgi için, React dökümanındaki [Uyumlaştırma](https://tr.reactjs.org/docs/reconciliation.html) bölümünü okuyabilirsiniz.
+
+`render` metodu çağırıldıktan sonra, elimize React elemanlarından oluşan bir ağaç geçer.
+Bu react elemanları ağacının yanı sıra, React'ın state'i korumak için bir iç nesne ağacı (bileşenler, DOM düğümleri, vb.) vardır.
+Versiyon 16'dan itibaren, React bu iç nesne ağacının yeni bir gerçekleştirimine geçti ve bunu yöneten algoritmanın kod adı **Fiber**'dir.
+
+Bu yazıdaki anlattıklarım React'ı kullanmak için gerekli değildir.
+Ancak React'ın nasıl çalıştığını anlamak, React kullanırken yazdığınız kodun mantığını daha iyi kavramanızı sağlayabilir.
+Ayrıca, React'ın karmaşık problemler için uyguladığı çözümleri görmek de bakış açınızı genişletebilir.
+Ek olarak, React'a katkıda bulunmak gibi bir amacınız varsa, bu yazı size güzel bir kaynak olacaktır.
+
+### Kullanacağımız örnek
+
+Yazının devamında aşağıdaki basit bileşen üzerinden konuşacağız:
+
+```jsx react-live
+class ClickCounter extends React.Component {
+    constructor(props) {
+        super(props);
+        this.state = {count: 0};
+        this.handleClick = this.handleClick.bind(this);
+    }
+
+    handleClick() {
+        this.setState((state) => {
+            return {count: state.count + 1};
+        });
+    }
+
+
+    render() {
+        return [
+            <button key="1" onClick={this.handleClick}>Update counter</button>,
+            <span key="2" style={{ color: 'black' }}>{this.state.count}</span>
+        ]
+    }
+}
+
+render(<ClickCounter />);
+```
+
+> Bu örnek canlı olarak render edilmekte. İsterseniz kurcalayabilirisiniz.
+
+### React elemanları ve Fiber düğümleri
+
+React'taki her bileşenin, render metodundan döndürülen bir görünümü veya şablonu diyebileceğimiz bir kullanıcı arayüzü temsili vardır. İşte örnek bileşenimizin şablonu:
+
+```jsx
+<button key="1" onClick={this.onClick}>Update counter</button>
+<span key="2" style={{ color: 'black' }}>{this.state.count}</span>
+```
+
+<br/>
+
+#### React elemanları
+
+Bir şablon JSX derleyicisinden geçtiğinde, elimizde bir gurup React elemanı olur.
+JSX kullanmamız zorunlu olmadığından, örnek bileşenimiz için render metodunu şu şekilde yeniden yazabiliriz:
+
+```js
+render() {
+    return [
+        React.createElement(
+            'button',
+            {
+                key: '1',
+                onClick: this.onClick
+            },
+            'Update counter'
+        ),
+        React.createElement(
+            'span',
+            {
+                key: '2',
+                style: { color: 'black' }
+            },
+            this.state.count
+        )
+    ]
+}
+```
+
+`React.createElement` fonksiyonu çalıştıktan sonra render metodunun içi şu şekilde olacaktır:
+
+```js
+[
+    {
+        $$typeof: Symbol(react.element),
+        type: 'button',
+        key: "1",
+        props: {
+            children: 'Update counter',
+            onClick: () => { ... }
+        }
+    },
+    {
+        $$typeof: Symbol(react.element),
+        type: 'span',
+        key: "2",
+        props: {
+            children: 0,
+            style: { color: 'black' }
+        }
+    }
+]
+```
+
+> React'ın bu nesnelere `$$typeof` özelliğini eklediğini görebilirsiniz.
+> Genel olarak, bunun güvenlik için eklendiğini söyleyebilirim.
+> `$$typeof` özelliği hakkında daha detaylı bilgiye [buradan](https://overreacted.io/why-do-react-elements-have-typeof-property/) ulaşabilirsiniz.
+
+`type`, `key` ve `props` özellikleri `React.createElement` fonksiyonuna geçtiğimiz parametrelerden geliyor.
+Tüm haline [buradan](https://github.com/facebook/react/blob/5b89d353e27a7ef07b40929f7343ebcc43bdaa58/packages/react/src/ReactElement.js#L146) bakabilirsiniz.
+`ref` gibi özellikler konumuzun dışında olduğu için atlıyorum.
+
+`ClickCounter` bileşenimizin React elemanında herhangi bir state veya prop yoktur:
+
+```js
+{
+    $$typeof: Symbol(react.element),
+    key: null,
+    props: {},
+    type: ClickCounter
+}
+```
+
+<br/>
+
+#### Fiber düğümleri
+
+Reconciliation sırasında render metodundan döndürülen her React elemanının verisi, fiber ağacıyla birleştirilir.
+Her React elemanına karşılık gelen bir fiber düğümü vardır.
+React elemanlarından farklı olarak, fiberler her render işleminde yeniden oluşturulmaz.
+Bunlar, bileşenlerin state'ini ve DOM'u tutan değiştirilebilir veri yapılarıdır.
+
+React elemanının türüne bağlı olarak, farklı aktiviteler gerçekleştirilir.
+Örneğimizde, sınıf bileşeni `ClickCounter` için, yaşam döngüsü metodları ve render metodu çağırılırken, `span` host bileşeni (DOM düğümü) için DOM mutasyonu gerçekleştirir.
+Böylece her bir React elemanı, yapılması gereken işi tanımlayan [ilgili tipte](https://github.com/facebook/react/blob/769b1f270e1251d9dbdce0fcbd9e92e502d059b8/packages/shared/ReactWorkTags.js) bir Fiber düğümüne dönüştürülür.
+
+**Fiber'i, yapılması gereken iş birimini temsil eden bir veri yapısı olarak düşünebilirsiniz.**
+
+> Fiber’in mimarisi ayrıca yapılacak işi izlemek, planlamak, duraklatmak ve iptal etmek için uygun bir yol sağlar.
+
+Bir React elemanı ilk kez bir fiber düğüme dönüştürülürken,
+fiber düğümü oluşturmak için elemanın verileri kullanılarak [`createFiberFromTypeAndProps`](https://github.com/facebook/react/blob/769b1f270e1251d9dbdce0fcbd9e92e502d059b8/packages/react-reconciler/src/ReactFiber.js#L414) fonksiyonu çağırılır.
+Sonraki güncellemelerde, fiber düğümü sadece ona karşılık gelen React elemanının verisi kullanılarak gerekli özellikleri güncellenir.
+Ayrıca, *key* prop'una göre hiyerarşideki düğüm taşınır veya karşılık gelen React öğesi artık render metodundan döndürülmezse silinir.
+
+> React'ın mevcut fiber düğümleri için gerçekleştirdiği tüm etkinlikleri ve ilgili işlevleri görmek için [`ChildReconciler`](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactChildFiber.js#L239) fonksiyonunu inceleyebilirsiniz.
+
+Örneğimiz için, fiber ağacı şu şekilde görünür:
+
+<p>
+    <ExampleFiberTree />
+</p>
+
+Tüm fiber düğümler, fiber düğümlerdeki şu özellikler kullanılarak bir *linked list* aracılığıyla bağlanır: `child`, `sibling` ve `return (parent)`.
+
+> Fiber'in neden linked list kullandığı hakkında güzel bir yazıya şuradan ulaşabilirsiniz:
+> [The how and why on React’s usage of linked list in Fiber to walk the component’s tree](https://medium.com/react-in-depth/the-how-and-why-on-reacts-usage-of-linked-list-in-fiber-67f1014d0eb7)
+
+### Current ve work in progress ağaçları
+
+İlk render işleminden sonra React, kullanıcı arayüzünü oluşturmak için kullanılan ve uygulamanın durumunu yansıtan bir Fiber ağacı oluşturur.
+Bu ağaca genellikle **current** (şu anki) denir.
+React güncellemeler üzerinde çalışmaya başladığında, ekranın gelecekteki durumunu yansıtan bir **workInProgress** (yapım aşamasında) ağacı oluşturur.
+
+Tüm çalışma, `workInProgress` ağacındaki fiberler üzerinde gerçekleştirilir.
+React, `current` ağacında gezinirker, mevcut her bir fiber düğümü için `workInProgress` ağacını oluşturan alternatif bir düğüm oluşturur.
+Bu düğüm, render metodu tarafından döndürülen React elemanından alınan veriler kullanılarak oluşturulur.
+Güncellemeler işlendikten ve ilgili tüm çalışmalar tamamlandıktan sonra, React'in ekrana aktarılmaya hazır alternatif bir ağacı olacaktır.
+Bu `workInProgress` ağacı ekrana geçirildikten sonra, `current` ağaç olur.
+
+React’in temel ilkelerinden biri tutarlılıktır.
+React, DOM'u her zaman tek seferde günceller ve kısmi sonuçlar göstermez.
+`workInProgress` ağacı, kullanıcı tarafından görülmeyen bir "taslak" görevi görür,
+böylece React önce tüm bileşenleri işleyebilir ve ardından değişiklikleri ekrana aktarabilir.
+
+Kaynak kodların içinde, hem `current` hem de `workInProgress` ağaçlarından fiber düğümler alan birçok işlev görebilirsiniz.
+İşte böyle bir fonksiyonun prototipi:
+
+```js
+function updateHostComponent(current, workInProgress, renderExpirationTime) {...}
+```
+
+Her bir fiber düğümü, diğer ağaçtan bir muadiline **alternate** (alternatif) alanında bir referans tutar.
+`current` ağaçtaki bir düğüm, `workInProgress` ağacındaki düğüme işaret eder veya bunun tersi de geçerlidir.
+
+### Fiber düğüm yapısı
+
+Şimdi `ClickCounter` bileşeni ve `span` için oluşturulan fiber düğümlerin yapısına bakalım:
+
+```js:title=ClickCounter
+{
+    stateNode: new ClickCounter,
+    type: ClickCounter,
+    alternate: new FiberNode, /* tag: 1, stateNode: new ClickCounter */
+    key: null,
+    updateQueue: null,
+    memoizedState: {count: 0},
+    pendingProps: {},
+    memoizedProps: {},
+    tag: 1,
+    effectTag: 0,
+    nextEffect: null,
+    return: new FiberNode, /* tag: 8, stateNode: null */
+    child: new FiberNode, /* tag: 5, stateNode: button */
+    sibling: null
+}
+```
+
+<br/>
+
+```js:title=span
+{
+    stateNode: new HTMLSpanElement,
+    type: "span",
+    alternate: new FiberNode, /* tag: 5, stateNode: "span" */
+    key: "2",
+    updateQueue: null,
+    memoizedState: null,
+    pendingProps: {children: 0},
+    memoizedProps: {children: 0},
+    tag: 5,
+    effectTag: 0,
+    nextEffect: null,
+    return: new FiberNode, /* tag: 1, stateNode: ClickCounter */
+    child: null,
+    sibling: null,
+}
+```
+
+Fiber düğümlerde oldukça fazla alan var.
+Önceki bölümlerde `alternate` alanlanının amacını açıkladım.
+Bir sonraki bölümde de, `effectTag` ve `nextEffect` alanlarını açıklayacağım.
+Şimdi, neden diğerlerine ihtiyacımız olduğunu görelim.
+
+##### stateNode
+
+Fiber düğümle ilişkilendirilmiş bir bileşenin, bir DOM düğümünün veya diğer React elemanı tipinin sınıf nesnesine ait referansı tutar.
+Genel olarak, bu özelliğin bir fiberle ilişkili yerel state'i tutmak için kullanıldığını söyleyebiliriz.
+
+##### type
+
+Bu fiber ile ilişkili fonksiyonu veya sınıfı tanımlar.
+Sınıf bileşenleri için yapıcı fonksiyona (constructor) işaret eder ve DOM öğeleri için HTML etiketini belirtir.
+
+##### tag
+
+[Fiber tipini](https://github.com/facebook/react/blob/769b1f270e1251d9dbdce0fcbd9e92e502d059b8/packages/shared/ReactWorkTags.js) tanımlar.
+Reconciliation algoritmasında hangi işin yapılması gerektiğini belirlemek için kullanılır.
+Örneğimizde, `ClickCounter` bileşeninin tipi ClassComponent (1) ve `span` öğesininki HostComponent (5) dir.
+
+##### updateQueue
+
+State güncellemeleri, callbackler ve DOM güncellemelerinden oluşan bir kuyruk.
+
+##### memoizedState
+
+Çıktıyı oluşturmak için kullanılan fiberin state'i.
+Güncellemeleri işlerken, o anda ekranda oluşturulmakta olan state'i yansıtır.
+
+##### memoizedProps
+
+Önceki render sırasında çıktıyı oluşturmak için kullanılan fiberin prop'ları.
+
+##### pendingProps
+
+React elemanlarındaki yeni verilerle güncellenen ve alt bileşenlere veya DOM öğelerine uygulanması gereken prop'lar.
+
+##### key
+
+React'in bir grup çocuk içinden hangi öğelerin değiştiğini, listeye eklendiğini veya listeden kaldırıldığını anlamanıza yardımcı olacak benzersiz bir tanımlayıcı.
+Key hakkında daha fazla bilgi için dökümandaki [Listeler ve Anahtarlar](https://tr.reactjs.org/docs/lists-and-keys.html) kısmına bakabilirsiniz.
+
+##### return, child ve sibling
+
+React'ın reconciliation sırasında, fiber düğümler arasında dolaşmasını sağlar.
+Aşağıda algoritmayı açıklarken daha net bir şekilde üzerlerinden geçeceğiz.
+
+> Fiber düğümün tüm yapısını [burada](https://github.com/facebook/react/blob/6e4f7c788603dac7fccd227a4852c110b072fe16/packages/react-reconciler/src/ReactFiber.js#L78) bulabilirsiniz.
+> Konumuzun dışında olan [Scheduler](https://github.com/facebook/react/tree/master/packages/scheduler)'e özgü `expirationTime`, `childExpirationTime` ve `mode` gibi alanları es geçtiğimi görebilirsiniz.
+
+Bir fiber düğüm'e ulaşmak için Chrome'da aşağıdaki işlemi uygulayabilirisiniz *(keşif ve dubug için)*:
+
+<div class="center-content">
+    <video controls preload="metadata">
+        <source src={FiberDebugExampleVideo} type="video/mp4" />
+    </video>
+</div>
+
+### Yan etkiler ve etki listesi
+
+React'taki bir bileşeni, kullanıcı arayüzünün temsilini hesaplamak için state ve prop'ları kullanan bir fonksiyon olarak düşünebiliriz.
+DOM'u mutasyona geçirmek veya yaşam döngüsü yöntemlerini çağırmak gibi diğer tüm işlemler bir **yan etki** *(side-effect)* veya basitçe bir **etki** *(effect)* olarak düşünülmelidir.
+
+Çoğu state ve prop güncellemesinin yan etkilere nasıl yol açtığını görebilirsiniz.
+Ve etki uygulamak/işlemek bir tür iş olduğundan, bir fiber düğüm, güncellemelere ek olarak etkileri izlemek için uygun bir mekanizmadır.
+Her fiber düğümün kendisiyle ilişkili etkileri olabilir.
+Bunlar, `effectTag` alanına kodlanırlar.
+Bu nedenle, Fiber'deki etkiler temel olarak güncellemeler işlendikten sonra 
+[yapılması gereken işleri](https://github.com/facebook/react/blob/b87aabdfe1b7461e7331abb3601d9e6bb27544bc/packages/shared/ReactSideEffectTags.js) tanımlar.
+DOM öğeleri için iş, öğe ekleme, güncelleme veya kaldırma işlemlerinden oluşur.
+Sınıf bileşenleri için React'in ref'leri güncellemesi ve componentDidMount ve componentDidUpdate yaşam döngüsü yöntemlerini çağırması gerekebilir.
+Diğer fiber türlerine karşılık gelen başka etkiler de vardır.
+
+React, güncellemeleri çok hızlı bir şekilde işler ve bu performans seviyesine ulaşmak için birkaç ilginç teknik kullanır.
+Bunlardan biri, **hızlı iterasyon için etkilere sahip olan doğrusal bir fiber düğüm listesi oluşturmasıdır**.
+Doğrusal listede gezinmek bir ağaçtan çok daha hızlıdır ve yan etkileri olmayan düğümlerde zaman geçirmeye de gerek yoktur.
+
+Bu listenin amacı, DOM güncellemelerine veya bunlarla ilişkili diğer etkilere sahip düğümleri işaretlemektir.
+Bu liste `finishedWork` ağacının bir alt kümesidir ve `current` ve `workInProgress` ağaçlarında kullanılan `child` özelliği yerine `nextEffect` özelliğini kullanarak diğer düğümlere bağlanır.
+
+### Genel algoritma
+
+React, işi iki ana aşamada gerçekleştirir: `render` ve `commit`.
+
+İlk olarak, `render` aşamasında React, `setState` veya `React.render` aracılığıyla bileşenlere güncellemeler uygular ve kullanıcı arayüzünde nelerin güncellenmesi gerektiğini bulur.
+Eğer ilk `render` işlemi ise React, render metodundan döndürülen her öğe için yeni bir fiber düğümü oluşturur.
+Sonraki güncellemelerde, mevcut React elemanları için fiberler yeniden kullanılır ve güncellenir.
+Bu işlemin sonucu, yan etkilerle *(side-effects)* işaretlenmiş bir fiber düğüm ağacıdır.
+Etkiler, bir sonraki `commit` aşamasında yapılması gereken işi açıklar.
+Bu aşamada React, etkilerle işaretlenmiş bir fiber ağacı alır ve bunları nesnelere uygular.
+Etkiler listesini gözden geçirir ve DOM güncellemelerini ve kullanıcı tarafından görülebilen diğer değişiklikleri gerçekleştirir.
+
+**`render` aşamasında çalışmanın eşzamansız olarak gerçekleştirilebileceğini anlamak önemlidir.**
+React, mevcut zamana bağlı olarak bir veya daha fazla fiber düğümü işleyebilir, daha sonra yapılan işi tutmak ve bir olaya izin vermek *(kullanıcı'nın parola yazması gibi)* için durabilir.
+Daha sonra kaldığı yerden devam eder.
+Bazen de, yapılan işten kurtulup tekrar üstten başlaması gerekebilir.
+Bu duraklamalar, gerçekleştirilen çalışmanın DOM güncellemeleri gibi kullanıcı tarafından görülebilir değişikliklere yol açmadığı için mümkün olur.
+**Buna karşılık, `commit` aşaması her zaman eşzamanlıdır.**
+Bunun nedeni, bu aşama sırasında yapılan çalışmanın kullanıcı tarafından görülebilir değişikliklere *(DOM güncellemeleri gib)* yol açmasıdır.
+React'ın bunu tek bir seferde yapmasının nedeni budur.
+
+Yaşam döngüsü *(lifecycle)* metodlarını çağırmak, React tarafından gerçekleştirilen bir çalışma türüdür.
+Bazı metodlar `render` aşamasında, diğerleri ise `commit` aşamasında çağrılır.
+`render` aşamasında çalışırken çağrılan yaşam döngülerinin listesi:
+
+* `getDerivedStateFromProps`
+* `shouldComponentUpdate`
+* `render`
+
+> `componentWillMount`, `componentWillReceiveProps`, `componentWillUpdate` metodları kullanımdan kaldırıldı.
+> Bunun nedeni, `render` aşaması DOM güncellemeleri gibi yan etkiler üretmediğinden, React güncellemeleri bileşenlerle eşzamansız bir şekilde eşzamanlı olarak işleyebilir.
+> "Bu metodlar yerine ne kullanmalıyız?" diyorsanız [Update on Async Rendering](https://reactjs.org/blog/2018/03/27/update-on-async-rendering.html) yazsına göz atmak isteyebilirsiniz.
+
+`commit` aşamasında çağırılan yaşam döngüsü metodlarının listesi:
+
+* `getSnapshotBeforeUpdate`
+* `componentDidMount`
+* `componentDidUpdate`
+* `componentWillUnmount`
+
+Bu yöntemler eşzamanlı `commit` aşamasında yürütüldüğünden, yan etkiler içerebilir ve DOM'a dokunabilirler.
+
+Şimdi ağaçta gezinmek ve iş yapmak için kullanılan genel algoritmaya göz atmak için arka planımız var.
+Hemen başlayalım.
+
+#### Render aşaması
+
+React'ın kalbinin attığı yer burasıdır diyebiliriz.
+Teknik kısma girmeden önce, sözde kod olarak algoritmanın nasıl gezindiğini tanımlayalım:
+
+1. Kök düğümünden başla.
+2. Çocuk olmayana kadar çocuğa git.
+3. Kardeş *(sibling)* varsa kardeşi seç ve 2'ye git.
+4. Hiçbiri yoksa, amcayı seç (ebeveyine gidip kardeşi seç) ve 2'den devam et. Bu adımda amca yoksa, amca bulunana kadar bir üst düğüme gidilir.
+5. Hiç ebeveyini olmayan düğüme (kök) geldin. Dur.
+
+Aşağıdaki örnek ağacı ele alalım:
+
+<p>
+    <ExampleFiberTree2 />
+</p>
+
+Bu örnekte gezme sırası *(ilk gelme sırasına göre)* şu şekide olacaktır:
+
+**A -> B -> C -> E -> G -> H -> D -> F**
+
+Reconciliation algoritması, [renderRoot](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L1132) fonksiyonunu kullanarak her zaman en üstteki `HostRoot` fiber düğümünden başlar.
+Bununla birlikte React, tamamlanmış düğümleri hızlıca atlayarak işlenmemiş fiber düğümlere geçer.
+
+Tüm fiber düğümler [workLoop](https://github.com/facebook/react/blob/f765f022534958bcf49120bf23bc1aa665e8f651/packages/react-reconciler/src/ReactFiberScheduler.js#L1136) içinde işlenir.
+Döngünün senkron bölümünün uygulaması:
+
+```js
+function workLoop(isYieldy) {
+  if (!isYieldy) {
+    while (nextUnitOfWork !== null) {
+      nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    }
+  } else {...}
+}
+```
+
+Yukarıdaki kodda `nextUnitOfWork`, yapılması gereken iş olarak `workInProgress` ağacından bir fiber düğüme referans tutar.
+React, fiber ağacında dolaştıkça, bu değişkeni, bitmemiş işi olan başka bir fiber düğüm olup olmadığını bilmek için kullanır.
+Mevcut fiber işlendikten sonra değişken, ağaçtaki bir sonraki fiber düğüme referans içerecek veya *`null`* olacaktır.
+*`null`* durumunda React, iş döngüsünden çıkar ve değişiklikleri işlemeye *(commit)* hazır olur.
+
+Ağaçta gezinmek ve işi başlatmak veya tamamlamak için kullanılan dört ana işlev vardır:
+
+* [`performUnitOfWork`](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L1056)
+* [`beginWork`](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberBeginWork.js#L1489)
+* [`completeUnitOfWork`](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L879)
+* [`completeWork`](https://github.com/facebook/react/blob/cbbc2b6c4d0d8519145560bd8183ecde55168b12/packages/react-reconciler/src/ReactFiberCompleteWork.js#L532)
+
+İlk iki fonksiyon olan `performUnitOfWork` ve `beginWork` ile başlayalım:
+
+```js
+function performUnitOfWork(workInProgress) {
+    let next = beginWork(workInProgress);
+    if (next === null) {
+        next = completeUnitOfWork(workInProgress);
+    }
+    return next;
+}
+
+function beginWork(workInProgress) {
+    console.log('work performed for ' + workInProgress.name);
+    return workInProgress.child;
+}
+```
+
+`performUnitOfWork` fonksiyonu, `workInProgress` ağacından bir fiber düğüm alır ve `beginWork` fonksiyonu çağırarak çalışmaya başlar.
+Bu, bir fiber için yapılması gereken tüm aktiviteleri başlayacak olan fonksiyondur.
+Bu yazının amaçları doğrultusunda, sadece işin yapıldığını belirtmek için fiberin adını console'a basıyoruz.
+`beginWork` fonksiyonu, döngüde işlemek için her zaman bir sonraki çocuğa referans veya *`null`* döndürür.
+Bir sonraki çocuk varsa, `workLoop` için `nextUnitOfWork` değişkenine atanacaktır.
+Ancak çocuk yoksa React, dalın sonuna geldiğini bilir ve böylece geçerli düğümü tamamlayabilir.
+Düğüm tamamlandığında, kardeşler için çalışması ve bundan sonra ebeveyne geri dönmesi gerekir.
+Bu, `completeUnitOfWork` işlevinde yapılır:
+
+```js
+function completeUnitOfWork(workInProgress) {
+    while (true) {
+        let returnFiber = workInProgress.return;
+        let siblingFiber = workInProgress.sibling;
+
+        nextUnitOfWork = completeWork(workInProgress);
+
+        if (siblingFiber !== null) {
+            // Kardeş varsa, performUnitOfWork içinde çalıştırılması için döndür.
+            return siblingFiber;
+        } else if (returnFiber !== null) {
+            // returnFiber'de başka iş yoksa, üst düğümü tamamlamak için döngüye devam et.
+            workInProgress = returnFiber;
+            continue;
+        } else {
+            // Kök'e ulaştık :)
+            return null;
+        }
+    }
+}
+
+function completeWork(workInProgress) {
+    console.log('work completed for ' + workInProgress.name);
+    return null;
+}
+```
+
+Fonksiyonun özünün büyük bir while döngüsü olduğunu görebilirsiniz.
+React, `workInProgress` düğümüne ait bir çocuk olmadığında bu işleve girer.
+Mevcut fiber için çalışmayı tamamladıktan sonra, bir kardeş olup olmadığını kontrol eder.
+Eğer kardeş bulunursa, React fonksiyondan çıkar ve o kardeşe ait referansı döndürür.
+`nextUnitOfWork` değişkenine atanacak ve React bu kardeşten başlayarak dal için çalışacaktır.
+Bu noktada React'ın sadece önceki kardeşler için çalışmayı tamamladığını anlamak önemlidir.
+**Yalnızca alt düğümlerle başlayan tüm dallar tamamlandıktan sonra üst düğüm ve gerisi için işi tamamlanır.**
+
+Uygulamadan da görebileceğiniz gibi, hem `performUnitOfWork` hem de `completeUnitOfWork` çoğunlukla iterasyon amacıyla kullanılırken, ana faaliyetler `beginWork` ve `completeWork` fonksiyonlarında gerçekleşir.
+
+#### Commit aşaması
+
+Aşama, [`completeRoot`](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L2306) fonksiyonu ile başlar.
+Burada React, DOM'u günceller ve mutasyon öncesi ve sonrası yaşam döngüsü yöntemlerini çağırır.
+
+> Kullandığım mutasyon kelimesi genel olarak, bir React elemanının geçirdiği/geçireceği değişimi ifade eder.
+
+React bu aşamaya geldiğinde elinde iki ağaç ve etki listesi vardır.
+İlk ağaç, ekranda görüntülenmekte olan durumu gösterir.
+İkinci ağaç, render aşamasında oluşturulmuş olan alternatif ağaçtır.
+Buna kaynak kodda `finishedWork` veya `workInProgress` adı verilir ve ekrana yansıtılması gereken durumu gösterir.
+Bu alternatif ağaç, çocuk ve kardeş referansları aracılığıyla mevcut ağaca benzer şekilde bağlanır.
+
+Etki listesi ise, `finishedWork` ağacının `nextEffect` işaretçisi ile bağlı olan fiberlerinden oluşan bir alt kümedir.
+Etki listesinin, `render` aşamasının bir sonucu olduğunu unutmayın.
+`render` aşamasının tüm amacı, hangi düğümlerin eklenmesi, güncellenmesi veya kaldırılması gerektiğini ve hangi bileşenlerin yaşam döngüsü yöntemlerinin çağrılması gerektiğini belirlemekti.
+İşte etki listesi bize bunu söylüyor.
+Ve ayrıca, bu tam olarak `commit` aşamasında gezilen düğümler kümesidir.
+
+`commit` aşamasında çalışan ana işlev, [`commitRoot`](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L523)'tur.
+Temel olarak, aşağıdakileri yapar:
+
+* `Snapshot` etkisiyle etiketlenmiş düğümlerde `getSnapshotBeforeUpdate` yaşam döngüsü metodunu çağırır.
+* `Deletion` etkisiyle ile etiketlenmiş düğümlerde `componentWillUnmount` yaşam döngüsü metodunu çağırır.
+* Tüm DOM ekleme, güncelleme ve kaldırma işlemlerini gerçekleştirir.
+* `finishedWork` ağacını `current` *(şimdiki)* ile değiştirir.
+* `Placement` etkisiyle etiketlenmiş düğümlerde `componentDidMount` yaşam döngüsü metodunu çağırır.
+* `Update` etkisiyle ile etiketlenmiş düğümlerde `componentDidUpdate` yaşam döngüsü metodunu çağırır.
+
+`getSnapshotBeforeUpdate` ön mutasyon metodunu çağırdıktan sonra React, bir ağaçtaki tüm yan etkileri işler *(commit)*.
+Bunu iki adımda yapar.
+İlk adımda, tüm DOM (host) ekleme, güncelleme, silme işlemlerini ve ref bağlantılarını kaldırma işlemlerini gerçekleştirir.
+Daha sonra React, `finishedWork` ağacını, (`workInProgress` ağacını `current` ağaç olarak işaretleyerek) `FiberRoot`'a atar.
+Bu, commit aşamasının ilk adımından sonra yapılır, böylece bir önceki ağaç `componentWillUnmount` sırasında hala geçerli olur,
+ancak ikinci adımdan önce tamamlanır, böylece biten çalışma `componentDidMount/Update` sırasında geçerli olur.
+İkinci adımda React, diğer tüm yaşam döngüsü metodlarını ve ref callbacklerini çağırır.
+Bu metodlar ayrı bir adım olarak yürütülür, böylece ağaçtaki tüm yerleşimler, güncellemeler ve silme işlemleri zaten çağırılmış olur.
+
+Yukarıda açıklanan adımları çalıştıran fonksiyonun özeti:
+
+```js
+function commitRoot(root, finishedWork) {
+    commitBeforeMutationLifecycles()
+    commitAllHostEffects();
+    root.current = finishedWork;
+    commitAllLifeCycles();
+}
+```
+
+Bu alt fonksiyonlardan her biri, etkiler listesinde gezinen ve etkilerin türüne göre çalışan bir döngü uygular.
+Fonksiyonun amacına ilişkin bir etki bulduğunda, uygular.
+
+##### Mutasyon öncesi yaşam döngüsü metodları
+
+Örneğin, bir etki ağacı üzerinde gezinen ve bir düğümün `Snapshot` etkisine sahip olup olmadığını kontrol eden kod:
+
+```js
+function commitBeforeMutationLifecycles() {
+    while (nextEffect !== null) {
+        const effectTag = nextEffect.effectTag;
+        if (effectTag & Snapshot) {
+            const current = nextEffect.alternate;
+            commitBeforeMutationLifeCycles(current, nextEffect);
+        }
+        nextEffect = nextEffect.nextEffect;
+    }
+}
+```
+
+Bir sınıf bileşeni için bu etki `getSnapshotBeforeUpdate` yaşam döngüsü metodunu çağırmak anlamına gelir.
+
+##### DOM güncellemeleri
+
+[`commitAllHostEffects`](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L376), React'in DOM güncellemelerini gerçekleştirdiği fonksiyondur.
+Fonksiyon temel olarak bir düğüm için yapılması gereken işlem türünü tanımlar ve yürütür:
+
+```js
+function commitAllHostEffects() {
+    switch (primaryEffectTag) {
+        case Placement: {
+            commitPlacement(nextEffect);
+            ...
+        }
+        case PlacementAndUpdate: {
+            commitPlacement(nextEffect);
+            commitWork(current, nextEffect);
+            ...
+        }
+        case Update: {
+            commitWork(current, nextEffect);
+            ...
+        }
+        case Deletion: {
+            commitDeletion(nextEffect);
+            ...
+        }
+    }
+}
+```
+
+> React'in, `commitDeletion` fonksiyonundaki silme işleminin bir parçası olarak `componentWillUnmount` metodunu çağırması ilginçtir.
+
+##### Mutasyon sonrası yaşam döngüsü metodları
+
+[commitAllLifecycles](https://github.com/facebook/react/blob/95a313ec0b957f71798a69d8e83408f40e76765b/packages/react-reconciler/src/ReactFiberScheduler.js#L465),
+React'ın kalan tüm yaşam döngüsü yöntemlerini *(`componentDidUpdate` ve `componentDidMount`)* çağırdığı fonksiyondur.
+
+### Kapanış
+
+Buraya kadar geldiğiniz için teşekkürler.
+Umarım keyifli bir okuma olmuştur.
+Eğer ingilizceniz el veriyorsa, neredeyse bire bir gittiğim
+[Inside Fiber: an in-depth overview of the new reconciliation algorithm in React](https://blog.ag-grid.com/inside-fiber-an-in-depth-overview-of-the-new-reconciliation-algorithm-in-react/)
+yazısını da okumanızı öneririm.
+Kendinize iyi bakın.
+
+### Kaynaklar
+
+* [Inside Fiber: an in-depth overview of the new reconciliation algorithm in React](https://blog.ag-grid.com/inside-fiber-an-in-depth-overview-of-the-new-reconciliation-algorithm-in-react/)
+* [GitHub - React](https://github.com/facebook/react)
+* [Build your own React](https://pomb.us/build-your-own-react/)
+* [The how and why on React’s usage of linked list in Fiber to walk the component’s tree](https://medium.com/react-in-depth/the-how-and-why-on-reacts-usage-of-linked-list-in-fiber-67f1014d0eb7)
