@@ -68,6 +68,18 @@ module.exports = {
         ],
       },
     },
+    {
+      resolve: "gatsby-plugin-react-svg",
+      options: {
+        rule: {
+          include: /content/
+        },
+        props: {
+          className: "my-class",
+          title: "example"
+        },
+      }
+    },
     `gatsby-plugin-offline`,
     `gatsby-plugin-netlify`,
     // `gatsby-plugin-webpack-bundle-analyser-v2`,
