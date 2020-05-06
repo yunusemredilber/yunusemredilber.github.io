@@ -7,6 +7,8 @@ module.exports = {
     siteUrl: `https://yunusemre.dev`,
     siteTitle: 'Yunus Emre Dilber',
     siteTitleAlt: `Yunus Emre Dilber - Personal Blog`,
+    siteHeadline: `Yunus Emre Dilber`,
+    siteTitleAlt: `The blog of Yunus`,
     siteLanguage: `en`,
     author: `@yunusemredilber`,
   },
