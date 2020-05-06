@@ -4,8 +4,11 @@ require(`dotenv`).config({
 
 module.exports = {
   siteMetadata: {
+    siteUrl: `https://yunusemre.dev`,
     siteTitle: 'Yunus Emre Dilber',
     siteTitleAlt: `Yunus Emre Dilber - Personal Blog`,
+    siteLanguage: `en`,
+    author: `@yunusemredilber`,
   },
   plugins: [
     {
